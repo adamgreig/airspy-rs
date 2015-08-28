@@ -1,7 +1,13 @@
 [package]
 name = "airspy"
+description = "Rust bindings for libairspy"
 version = "0.1.0"
 authors = ["Adam Greig <adam@adamgreig.com>"]
+homepage = "https://github.com/adamgreig/airspy-rs"
+repository = "https://github.com/adamgreig/airspy-rs.git"
+readme = "README.md"
+keywords = ["sdr", "airspy", "ffi"]
+license = "MIT"
 
 [dependencies]
 libc = "*"
