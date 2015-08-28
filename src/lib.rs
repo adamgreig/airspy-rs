@@ -5,7 +5,7 @@
 use std::ffi::CStr;
 use std::result;
 use std::str;
-use std::sync::mpsc::{Sender};
+use std::sync::mpsc::Sender;
 
 mod ffi;
 
@@ -337,9 +337,9 @@ mod tests {
     #[test]
     fn test_from_serial() {
         let _ = init();
-        let mut serial = 0u64;
+        let mut serial: u64;
         {
-            let airspy = Airspy::new();
+            let mut airspy = Airspy::new().unwrap();
             let v = airspy.get_partid_serial().unwrap();
             serial = v.serial_no;
         }
@@ -373,8 +373,8 @@ mod tests {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
         let _ = airspy.set_sample_type(SampleType::f32IQ);
-        let cb = |buffer: &[f32]| true;
-        assert!(airspy.start_rx(&cb).is_ok());
+        let (tx, _) = ::std::sync::mpsc::channel();
+        assert!(airspy.start_rx::<f32>(tx).is_ok());
     }
 
     #[test]
@@ -395,8 +395,9 @@ mod tests {
     fn test_get_version() {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
-        let version = airspy.get_version().unwrap();
+        assert!(airspy.get_version().is_ok());
         // Skip this test as it is hardware-dependent.
+        //let version = airspy.get_version().unwrap();
         //assert!(version == "AirSpy NOS v1.0.0-rc6-0-g035ff81 2015-07-14");
     }
 
@@ -404,8 +405,9 @@ mod tests {
     fn test_get_partid_serial() {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
-        let v = airspy.get_partid_serial().unwrap();
+        assert!(airspy.get_partid_serial().is_ok());
         // Skip these tests as they are hardware-dependent.
+        //let v = airspy.get_partid_serial().unwrap();
         //assert!(v.serial_no == 0x440464c83833444f);
         //assert!(v.part_id[0] == 0x6906002B);
         //assert!(v.part_id[1] == 0x00000030);
