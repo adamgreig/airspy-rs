@@ -227,6 +227,32 @@ impl Airspy {
         unsafe { ffi::airspy_is_streaming(self.ptr) == 1 }
     }
 
+    /// Write a register on the Si5351C
+    pub fn si5351c_write(&mut self, register: u8, value: u8) -> Result<()> {
+        ffifn!(ffi::airspy_si5351c_write(self.ptr, register, value))
+    }
+
+    /// Read a register on the Si5351C
+    pub fn si5351c_read(&mut self, register: u8) -> Result<u8> {
+        let mut val: u8 = 0;
+        try!(ffifn!(ffi::airspy_si5351c_read(
+            self.ptr, register, &mut val as *mut u8)));
+        Ok(val)
+    }
+
+    /// Write a register on the R820t
+    pub fn r820t_write(&mut self, register: u8, value: u8) -> Result<()> {
+        ffifn!(ffi::airspy_r820t_write(self.ptr, register, value))
+    }
+
+    /// Read a register on the R820t
+    pub fn r820t_read(&mut self, register: u8) -> Result<u8> {
+        let mut val: u8 = 0;
+        try!(ffifn!(ffi::airspy_r820t_read(
+            self.ptr, register, &mut val as *mut u8)));
+        Ok(val)
+    }
+
     /// Get the Airspy board type.
     pub fn get_board_id(&mut self) -> Result<&str> {
         let mut id: u8 = 0;
@@ -402,6 +428,32 @@ mod tests {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
         assert!(airspy.is_streaming() == false);
+    }
+
+    #[test]
+    fn test_si5351c_read() {
+        let mut airspy = Airspy::new().unwrap();
+        assert!(airspy.si5351c_read(16).is_ok());
+    }
+
+    #[test]
+    fn test_si5351c_write() {
+        let mut airspy = Airspy::new().unwrap();
+        let val = airspy.si5351c_read(16).unwrap();
+        assert!(airspy.si5351c_write(16, val).is_ok());
+    }
+
+    #[test]
+    fn test_r820t_read() {
+        let mut airspy = Airspy::new().unwrap();
+        assert!(airspy.r820t_read(0x0F).is_ok());
+    }
+
+    #[test]
+    fn test_r820t_write() {
+        let mut airspy = Airspy::new().unwrap();
+        let val = airspy.r820t_read(0x0F).unwrap();
+        assert!(airspy.r820t_write(0x0F, val).is_ok());
     }
 
     #[test]
