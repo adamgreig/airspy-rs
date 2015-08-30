@@ -231,15 +231,6 @@ impl Airspy {
         ffifn!(ffi::airspy_start_rx(self.ptr, rx_cb::<T>, ctx))
     }
 
-    /// Stop the Airspy streaming.
-    ///
-    /// Causes the Sender from start_rx to leak. Consider destroying the
-    /// Receiver half instead, which will also trigger libairspy to stop
-    /// sending samples, but does not leak.
-    pub fn stop_rx(&mut self) -> Result<()> {
-        ffifn!(ffi::airspy_stop_rx(self.ptr))
-    }
-
     /// Check if the Airspy is currently streaming.
     pub fn is_streaming(&mut self) -> bool {
         unsafe { ffi::airspy_is_streaming(self.ptr) == 1 }
