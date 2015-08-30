@@ -192,13 +192,6 @@ impl Airspy {
         Ok(rates)
     }
 
-    /// Set this Airspy's sample rate by an index into available rates.
-    ///
-    /// `rate_idx` is an index from the Vector returned by `get_sample_rates`.
-    pub fn set_sample_rate_by_idx(&mut self, rate_idx: u32) -> Result<()> {
-        ffifn!(ffi::airspy_set_samplerate(self.ptr, rate_idx))
-    }
-
     /// Set this Airspy's sample rate to a specific rate.
     ///
     /// This rate must be in the available rates or an error is returned.
@@ -206,7 +199,8 @@ impl Airspy {
         let rates = try!(self.get_sample_rates());
         for (idx, rate) in rates.iter().enumerate() {
             if *rate == target_rate {
-                return self.set_sample_rate_by_idx(idx as u32);
+                return ffifn!(ffi::airspy_set_samplerate(
+                    self.ptr, idx as u32));
             }
         }
         Err(FFIError::new(ffi::airspy_error::AIRSPY_ERROR_INVALID_PARAM))
@@ -502,13 +496,6 @@ mod tests {
         assert!(rates.contains(&2500000));
         assert!(rates.contains(&10000000));
         let _ = exit();
-    }
-
-    #[test]
-    fn test_set_sample_rate_by_idx() {
-        let _ = init();
-        let mut airspy = Airspy::new().unwrap();
-        assert!(airspy.set_sample_rate_by_idx(0).is_ok());
     }
 
     #[test]
