@@ -429,14 +429,6 @@ impl Airspy {
     pub fn set_rf_bias(&mut self, enable: bool) -> Result<()> {
         ffifn!(ffi::airspy_set_rf_bias(self.ptr, enable as u8))
     }
-
-    /// Enable/disable USB sample packing
-    /// NB: Not yet enabled as changes between shipping Ubuntu library and
-    /// latest development library.
-    pub fn set_packing(&mut self, _enable: bool) -> Result<()> {
-        //ffifn!(ffi::airspy_set_packing(self.ptr, enable as u8))
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -661,12 +653,4 @@ mod tests {
         let mut airspy = Airspy::new().unwrap();
         assert!(airspy.set_rf_bias(true).is_ok());
     }
-
-    #[test]
-    fn test_set_packing() {
-        let _ = init();
-        let mut airspy = Airspy::new().unwrap();
-        assert!(airspy.set_packing(true).is_ok());
-    }
-
 }
