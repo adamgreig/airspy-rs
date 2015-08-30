@@ -45,6 +45,24 @@ pub enum SampleType {
     u16Real
 }
 
+/// Choice of GPIO port
+pub enum GPIOPort {
+    Port0, Port1, Port2, Port3, Port4, Port5, Port6, Port7
+}
+
+/// Choice of GPIO pin
+pub enum GPIOPin {
+    Pin0,  Pin1,  Pin2,  Pin3,  Pin4,  Pin5,  Pin6,  Pin7,
+    Pin8,  Pin9,  Pin10, Pin11, Pin12, Pin13, Pin14, Pin15,
+    Pin16, Pin17, Pin18, Pin19, Pin20, Pin21, Pin22, Pin23,
+    Pin24, Pin25, Pin26, Pin27, Pin28, Pin29, Pin30, Pin31
+}
+
+/// GPIO Direction
+pub enum GPIODirection {
+    Input, Output
+}
+
 /// Error type for libairspy functions.
 #[derive(Debug)]
 pub struct FFIError {
@@ -253,6 +271,101 @@ impl Airspy {
         Ok(val)
     }
 
+    fn map_gpio_port_pin(port: GPIOPort, pin: GPIOPin)
+            -> (ffi::airspy_gpio_port_t, ffi::airspy_gpio_pin_t) {
+        (match port {
+            GPIOPort::Port0 => ffi::airspy_gpio_port_t::GPIO_PORT0,
+            GPIOPort::Port1 => ffi::airspy_gpio_port_t::GPIO_PORT1,
+            GPIOPort::Port2 => ffi::airspy_gpio_port_t::GPIO_PORT2,
+            GPIOPort::Port3 => ffi::airspy_gpio_port_t::GPIO_PORT3,
+            GPIOPort::Port4 => ffi::airspy_gpio_port_t::GPIO_PORT4,
+            GPIOPort::Port5 => ffi::airspy_gpio_port_t::GPIO_PORT5,
+            GPIOPort::Port6 => ffi::airspy_gpio_port_t::GPIO_PORT6,
+            GPIOPort::Port7 => ffi::airspy_gpio_port_t::GPIO_PORT7,
+        }, match pin {
+            GPIOPin::Pin0 => ffi::airspy_gpio_pin_t::GPIO_PIN0,
+            GPIOPin::Pin1 => ffi::airspy_gpio_pin_t::GPIO_PIN1,
+            GPIOPin::Pin2 => ffi::airspy_gpio_pin_t::GPIO_PIN2,
+            GPIOPin::Pin3 => ffi::airspy_gpio_pin_t::GPIO_PIN3,
+            GPIOPin::Pin4 => ffi::airspy_gpio_pin_t::GPIO_PIN4,
+            GPIOPin::Pin5 => ffi::airspy_gpio_pin_t::GPIO_PIN5,
+            GPIOPin::Pin6 => ffi::airspy_gpio_pin_t::GPIO_PIN6,
+            GPIOPin::Pin7 => ffi::airspy_gpio_pin_t::GPIO_PIN7,
+            GPIOPin::Pin8 => ffi::airspy_gpio_pin_t::GPIO_PIN8,
+            GPIOPin::Pin9 => ffi::airspy_gpio_pin_t::GPIO_PIN9,
+            GPIOPin::Pin10 => ffi::airspy_gpio_pin_t::GPIO_PIN10,
+            GPIOPin::Pin11 => ffi::airspy_gpio_pin_t::GPIO_PIN11,
+            GPIOPin::Pin12 => ffi::airspy_gpio_pin_t::GPIO_PIN12,
+            GPIOPin::Pin13 => ffi::airspy_gpio_pin_t::GPIO_PIN13,
+            GPIOPin::Pin14 => ffi::airspy_gpio_pin_t::GPIO_PIN14,
+            GPIOPin::Pin15 => ffi::airspy_gpio_pin_t::GPIO_PIN15,
+            GPIOPin::Pin16 => ffi::airspy_gpio_pin_t::GPIO_PIN16,
+            GPIOPin::Pin17 => ffi::airspy_gpio_pin_t::GPIO_PIN17,
+            GPIOPin::Pin18 => ffi::airspy_gpio_pin_t::GPIO_PIN18,
+            GPIOPin::Pin19 => ffi::airspy_gpio_pin_t::GPIO_PIN19,
+            GPIOPin::Pin20 => ffi::airspy_gpio_pin_t::GPIO_PIN20,
+            GPIOPin::Pin21 => ffi::airspy_gpio_pin_t::GPIO_PIN21,
+            GPIOPin::Pin22 => ffi::airspy_gpio_pin_t::GPIO_PIN22,
+            GPIOPin::Pin23 => ffi::airspy_gpio_pin_t::GPIO_PIN23,
+            GPIOPin::Pin24 => ffi::airspy_gpio_pin_t::GPIO_PIN24,
+            GPIOPin::Pin25 => ffi::airspy_gpio_pin_t::GPIO_PIN25,
+            GPIOPin::Pin26 => ffi::airspy_gpio_pin_t::GPIO_PIN26,
+            GPIOPin::Pin27 => ffi::airspy_gpio_pin_t::GPIO_PIN27,
+            GPIOPin::Pin28 => ffi::airspy_gpio_pin_t::GPIO_PIN28,
+            GPIOPin::Pin29 => ffi::airspy_gpio_pin_t::GPIO_PIN29,
+            GPIOPin::Pin30 => ffi::airspy_gpio_pin_t::GPIO_PIN30,
+            GPIOPin::Pin31 => ffi::airspy_gpio_pin_t::GPIO_PIN31,
+        })
+    }
+
+    /// Write a GPIO port:pin to `val`, false to clear or true to set.
+    pub fn gpio_write(&mut self, port: GPIOPort, pin: GPIOPin, val: bool)
+        -> Result<()>
+    {
+        let (port, pin) = Airspy::map_gpio_port_pin(port, pin);
+        ffifn!(ffi::airspy_gpio_write(self.ptr, port, pin, val as u8))
+    }
+
+    /// Read a GPIO port:pin
+    pub fn gpio_read(&mut self, port: GPIOPort, pin: GPIOPin) -> Result<bool> {
+        let mut val: u8 = 0;
+        let (port, pin) = Airspy::map_gpio_port_pin(port, pin);
+        try!(ffifn!(ffi::airspy_gpio_read(
+            self.ptr, port, pin, &mut val as *mut u8)));
+        Ok(match val {
+            0 => false,
+            1 => true,
+            _ => unreachable!()
+        })
+    }
+
+    /// Set a GPIO port:pin direction.
+    pub fn gpio_set_direction(&mut self, port: GPIOPort, pin: GPIOPin,
+        dir: GPIODirection) -> Result<()>
+    {
+        let (port, pin) = Airspy::map_gpio_port_pin(port, pin);
+        let dir: u8 = match dir {
+            GPIODirection::Input => 0,
+            GPIODirection::Output => 1
+        };
+        ffifn!(ffi::airspy_gpiodir_write(self.ptr, port, pin, dir))
+    }
+
+    /// Get a GPIO port:pin direction.
+    pub fn gpio_get_direction(&mut self, port: GPIOPort, pin: GPIOPin)
+        -> Result<GPIODirection>
+    {
+        let mut dir: u8 = 0;
+        let (port, pin) = Airspy::map_gpio_port_pin(port, pin);
+        try!(ffifn!(ffi::airspy_gpiodir_read(
+            self.ptr, port, pin, &mut dir as *mut u8)));
+        Ok(match dir {
+            0 => GPIODirection::Input,
+            1 => GPIODirection::Output,
+            _ => unreachable!()
+        })
+    }
+
     /// Get the Airspy board type.
     pub fn get_board_id(&mut self) -> Result<&str> {
         let mut id: u8 = 0;
@@ -454,6 +567,36 @@ mod tests {
         let mut airspy = Airspy::new().unwrap();
         let val = airspy.r820t_read(0x0F).unwrap();
         assert!(airspy.r820t_write(0x0F, val).is_ok());
+    }
+
+    #[test]
+    fn test_gpio_read() {
+        let mut airspy = Airspy::new().unwrap();
+        assert!(airspy.gpio_read(GPIOPort::Port0, GPIOPin::Pin0).is_ok());
+    }
+
+    #[test]
+    fn test_gpio_write() {
+        let mut airspy = Airspy::new().unwrap();
+        let val = airspy.gpio_read(GPIOPort::Port0, GPIOPin::Pin0).unwrap();
+        assert!(airspy.gpio_write(
+            GPIOPort::Port0, GPIOPin::Pin0, val).is_ok());
+    }
+
+    #[test]
+    fn test_gpio_get_dir() {
+        let mut airspy = Airspy::new().unwrap();
+        assert!(airspy.gpio_get_direction(
+            GPIOPort::Port0, GPIOPin::Pin0).is_ok());
+    }
+
+    #[test]
+    fn test_gpio_set_dir() {
+        let mut airspy = Airspy::new().unwrap();
+        let dir = airspy.gpio_get_direction(
+            GPIOPort::Port0, GPIOPin::Pin0).unwrap();
+        assert!(airspy.gpio_set_direction(
+            GPIOPort::Port0, GPIOPin::Pin0, dir).is_ok());
     }
 
     #[test]
