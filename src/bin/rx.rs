@@ -25,13 +25,8 @@ fn open_airspy() -> airspy::Airspy {
 fn conf_airspy(dev: &mut airspy::Airspy) {
     println!("\nConfiguring Airspy:");
 
-    let rates = dev.get_sample_rates().unwrap();
-    for (idx, rate) in rates.iter().enumerate() {
-        if *rate == 10_000_000 {
-            println!("    Setting sample rate to {}", rate);
-            dev.set_sample_rate(idx as u32).unwrap();
-        }
-    }
+    println!("    Setting sample rate to 10Msps");
+    dev.set_sample_rate(10_000_000).unwrap();
 
     println!("    Setting sample type to floating point IQ");
     dev.set_sample_type(airspy::SampleType::f32IQ).unwrap();

@@ -47,13 +47,13 @@ pub enum SampleType {
 
 /// Error type for libairspy functions.
 #[derive(Debug)]
-pub struct Error {
+pub struct FFIError {
     errno: ffi::airspy_error
 }
 
-impl Error {
-    fn new(err: ffi::airspy_error) -> Error {
-        Error { errno: err }
+impl FFIError {
+    fn new(err: ffi::airspy_error) -> FFIError {
+        FFIError { errno: err }
     }
 
     fn errstr(&self) -> &str {
@@ -64,20 +64,20 @@ impl Error {
     }
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for FFIError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Airspy Error: {}", self.errstr())
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for FFIError {
     fn description(&self) -> &str {
         self.errstr()
     }
 }
 
 /// Result type for libairspy functions.
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = result::Result<T, FFIError>;
 
 /// Fetch the current version of libairspy C library.
 pub fn lib_version() -> LibVersion {
@@ -93,7 +93,7 @@ macro_rules! ffifn {
     ($f:expr, $r:expr) => (
         match unsafe { $f } {
             ffi::airspy_error::AIRSPY_SUCCESS => Ok($r),
-            err => Err(Error::new(err))
+            err => Err(FFIError::new(err))
         }
     );
     ($f:expr) => (
@@ -174,11 +174,24 @@ impl Airspy {
         Ok(rates)
     }
 
-    /// Set this Airspy's sample rate.
+    /// Set this Airspy's sample rate by an index into available rates.
     ///
     /// `rate_idx` is an index from the Vector returned by `get_sample_rates`.
-    pub fn set_sample_rate(&mut self, rate_idx: u32) -> Result<()> {
+    pub fn set_sample_rate_by_idx(&mut self, rate_idx: u32) -> Result<()> {
         ffifn!(ffi::airspy_set_samplerate(self.ptr, rate_idx))
+    }
+
+    /// Set this Airspy's sample rate to a specific rate.
+    ///
+    /// This rate must be in the available rates or an error is returned.
+    pub fn set_sample_rate(&mut self, target_rate: u32) -> Result<()> {
+        let rates = try!(self.get_sample_rates());
+        for (idx, rate) in rates.iter().enumerate() {
+            if *rate == target_rate {
+                return self.set_sample_rate_by_idx(idx as u32);
+            }
+        }
+        Err(FFIError::new(ffi::airspy_error::AIRSPY_ERROR_INVALID_PARAM))
     }
 
     /// Start RX streaming from the Airspy.
@@ -362,10 +375,17 @@ mod tests {
     }
 
     #[test]
+    fn test_set_sample_rate_by_idx() {
+        let _ = init();
+        let mut airspy = Airspy::new().unwrap();
+        assert!(airspy.set_sample_rate_by_idx(0).is_ok());
+    }
+
+    #[test]
     fn test_set_sample_rate() {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
-        assert!(airspy.set_sample_rate(0).is_ok());
+        assert!(airspy.set_sample_rate(10_000_000).is_ok());
     }
 
     #[test]

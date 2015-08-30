@@ -1,7 +1,8 @@
 # Rust bindings for libairspy
 
 Requires libairspy at least 1.0.6 already built and installed on your system. 
-Tests require an attached Airspy (otherwise there is not much to test!).
+Tests require an attached Airspy (otherwise there is not much to test!) and 
+must be run with `RUST_TEST_THREADS=1` or the threads may stomp on each other.
 
 Simple usage example:
 
