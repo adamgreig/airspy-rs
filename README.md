@@ -11,10 +11,10 @@ must be run with `RUST_TEST_THREADS=1` or the threads may stomp on each other.
 The basic gist is:
 
 1. Make new Airspy object
-2. Configure it using set_sample_rate, set_freq, etc
+2. Configure it using `set_sample_rate`, `set_freq`, etc
 3. Create a MPSC channel for data transfer
 4. Use `start_rx<T>` to begin transfer to your channel, specifying desired 
-   sample type with `T` (see below).
+   sample type with `T` (see below)
 5. Call `rx.recv()` on your side to read in the data buffers
 6. When your half of the channel is destroyed, the Airspy is stopped
 
@@ -30,9 +30,9 @@ Sample types are set by the `T` in `start_rx<T>`. It can be any of:
 
 The type is passed to libairspy which does the conversion from the native 
 `Real<u16>`. Note that `Real` types give you twice as many samples per time 
-period than `IQ`. Also note that `Real<T>` is just an alias for `T` and `IQ<T>` 
-for `Complex<T>`, so all the usual maths operations are available for both 
-types.
+period than `IQ`. Also note that `Real<T>` is just an alias for `T`, and 
+`IQ<T>` for `Complex<T>`, so all the usual maths operations are available for 
+both types.
 
 ## Example
 
@@ -52,8 +52,8 @@ dev.set_freq(434000000).unwrap();
 // Samples are sent back to us from the C thread by an MPSC channel
 let (tx, rx) = mpsc::channel();
 
-// Begin receiving data. Need the type hint either here or when creating the
-// channel, which must match with the sample type selected earlier.
+// Begin receiving data, ask for f32 IQ samples.
+// This implies that the mpsc channel will have type Vec<IQ<f32>>.
 dev.start_rx::<IQ<f32>>(tx).unwrap();
 
 // Blocking receive samples, stop after 10M. When the `rx` object goes out of
@@ -62,7 +62,7 @@ dev.start_rx::<IQ<f32>>(tx).unwrap();
 let mut n_samples = 0usize;
 while dev.is_streaming() {
     let samples = rx.recv().unwrap();
-    n_samples += samples.len() / 2;
+    n_samples += samples.len();
     println!("Got {} samples so far", n_samples);
     if n_samples > 10_000_000 {
         break;
