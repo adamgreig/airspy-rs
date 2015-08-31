@@ -8,14 +8,13 @@ Simple usage example:
 
 ```rust
 extern crate airspy;
-use airspy::{Airspy,SampleType};
+use airspy::{Airspy,IQ};
 use std::sync::mpsc;
 
 // Open first available Airspy and configure for floating IQ samples,
 // 10Msps, 434MHz (can also set gains, AGC, RF bias etc).
 let mut dev = Airspy::new().unwrap();
 dev.set_sample_rate(0).unwrap();
-dev.set_sample_type(SampleType::f32IQ).unwrap();
 dev.set_freq(434000000).unwrap();
 
 // Samples are sent back to us from the C thread by an MPSC channel
@@ -23,7 +22,7 @@ let (tx, rx) = mpsc::channel();
 
 // Begin receiving data. Need the type hint either here or when creating the
 // channel, which must match with the sample type selected earlier.
-dev.start_rx::<f32>(tx).unwrap();
+dev.start_rx::<IQ<f32>>(tx).unwrap();
 
 // Blocking receive samples, stop after 10M. When the `rx` object goes out of
 // scope and is destroyed, the `tx` detects the hangup and tells libairspy to

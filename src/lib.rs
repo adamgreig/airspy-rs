@@ -35,15 +35,34 @@ pub struct PartID {
     pub serial_no: u64
 }
 
-/// Choice of sample type.
-#[allow(non_camel_case_types)]
-pub enum SampleType {
-    f32IQ,
-    f32Real,
-    i16IQ,
-    i16Real,
-    u16Real
+/// Represent IQ data, either f32 or i16
+#[repr(packed)]
+#[derive(Clone)]
+pub struct IQ<T> where T: Clone {
+    pub i: T,
+    pub q: T
 }
+
+/// Represent real-only data, either f32 or i16 or u16
+#[repr(packed)]
+#[derive(Clone)]
+pub struct Real<T> where T: Clone {
+    pub i: T
+}
+
+/// Trait for all allowable sample types
+// TODO: update to use associated constants when that hits stable
+pub trait SampleType: Clone { fn get_type() -> ffi::airspy_sample_type; }
+impl SampleType for IQ<f32> { fn get_type() -> ffi::airspy_sample_type {
+    ffi::airspy_sample_type::AIRSPY_SAMPLE_FLOAT32_IQ } }
+impl SampleType for IQ<i16> { fn get_type() -> ffi::airspy_sample_type {
+    ffi::airspy_sample_type::AIRSPY_SAMPLE_INT16_IQ } }
+impl SampleType for Real<f32> { fn get_type() -> ffi::airspy_sample_type {
+    ffi::airspy_sample_type::AIRSPY_SAMPLE_FLOAT32_REAL } }
+impl SampleType for Real<i16> { fn get_type() -> ffi::airspy_sample_type {
+    ffi::airspy_sample_type::AIRSPY_SAMPLE_INT16_REAL } }
+impl SampleType for Real<u16> { fn get_type() -> ffi::airspy_sample_type {
+    ffi::airspy_sample_type::AIRSPY_SAMPLE_UINT16_REAL } }
 
 /// Choice of GPIO port
 pub enum GPIOPort {
@@ -121,23 +140,13 @@ macro_rules! ffifn {
 
 /// Callback in Rust to send to the libairspy C library that sends buffers
 /// through to a user channel, quitting streaming when the channel hangs up.
-extern "C" fn rx_cb<T>(transfer: *mut ffi::airspy_transfer_t) -> ffi::c_int
-    where T: Clone
+extern fn rx_cb<T>(transfer: *mut ffi::airspy_transfer_t) -> ffi::c_int
+    where T: SampleType
 {
     let transfer = unsafe { &*transfer };
     let sample_count = transfer.sample_count as usize;
-    let iq_multiplier = match transfer.sample_type {
-        ffi::airspy_sample_type::AIRSPY_SAMPLE_FLOAT32_IQ => 2,
-        ffi::airspy_sample_type::AIRSPY_SAMPLE_FLOAT32_REAL => 1,
-        ffi::airspy_sample_type::AIRSPY_SAMPLE_INT16_IQ => 2,
-        ffi::airspy_sample_type::AIRSPY_SAMPLE_INT16_REAL => 1,
-        ffi::airspy_sample_type::AIRSPY_SAMPLE_UINT16_REAL => 1,
-        ffi::airspy_sample_type::AIRSPY_SAMPLE_END => unreachable!()
-    };
-
     let buffer = unsafe {
-        std::slice::from_raw_parts(transfer.samples as *const T,
-                                   sample_count * iq_multiplier)
+        std::slice::from_raw_parts(transfer.samples as *const T, sample_count)
     }.to_vec();
 
     // Turn the ctx into a &Sender and send the buffer along it.
@@ -212,16 +221,22 @@ impl Airspy {
     /// the remote channel hangs up, libairspy is told to stop streaming and
     /// the Sender is dropped.
     ///
-    /// T must match with whatever was set for SampleType, and must be one of
-    /// f32, i16 or u16.
+    /// T is used to set the sample type and may be IQ<f32>, IQ<i16>,
+    /// Real<f32>, Real<i16> or Real<u16>.
     pub fn start_rx<T>(&mut self, sender: Sender<Vec<T>>) -> Result<()>
-        where T: Clone
+        where T: SampleType
     {
+        // Set the Airspy to the correct sample type
+        try!(ffifn!(ffi::airspy_set_sample_type(self.ptr, T::get_type())));
+
         // Box the Sender to move it onto the heap, then get a void* to it.
         let boxed_sender = Box::new(sender);
         let ctx = &*boxed_sender as *const _ as *mut ffi::c_void;
+
         // Forget the heap Sender so it is not immediately destroyed.
         std::mem::forget(boxed_sender);
+
+        // Start data reception
         ffifn!(ffi::airspy_start_rx(self.ptr, rx_cb::<T>, ctx))
     }
 
@@ -268,16 +283,16 @@ impl Airspy {
             GPIOPort::Port6 => ffi::airspy_gpio_port_t::GPIO_PORT6,
             GPIOPort::Port7 => ffi::airspy_gpio_port_t::GPIO_PORT7,
         }, match pin {
-            GPIOPin::Pin0 => ffi::airspy_gpio_pin_t::GPIO_PIN0,
-            GPIOPin::Pin1 => ffi::airspy_gpio_pin_t::GPIO_PIN1,
-            GPIOPin::Pin2 => ffi::airspy_gpio_pin_t::GPIO_PIN2,
-            GPIOPin::Pin3 => ffi::airspy_gpio_pin_t::GPIO_PIN3,
-            GPIOPin::Pin4 => ffi::airspy_gpio_pin_t::GPIO_PIN4,
-            GPIOPin::Pin5 => ffi::airspy_gpio_pin_t::GPIO_PIN5,
-            GPIOPin::Pin6 => ffi::airspy_gpio_pin_t::GPIO_PIN6,
-            GPIOPin::Pin7 => ffi::airspy_gpio_pin_t::GPIO_PIN7,
-            GPIOPin::Pin8 => ffi::airspy_gpio_pin_t::GPIO_PIN8,
-            GPIOPin::Pin9 => ffi::airspy_gpio_pin_t::GPIO_PIN9,
+            GPIOPin::Pin0  => ffi::airspy_gpio_pin_t::GPIO_PIN0,
+            GPIOPin::Pin1  => ffi::airspy_gpio_pin_t::GPIO_PIN1,
+            GPIOPin::Pin2  => ffi::airspy_gpio_pin_t::GPIO_PIN2,
+            GPIOPin::Pin3  => ffi::airspy_gpio_pin_t::GPIO_PIN3,
+            GPIOPin::Pin4  => ffi::airspy_gpio_pin_t::GPIO_PIN4,
+            GPIOPin::Pin5  => ffi::airspy_gpio_pin_t::GPIO_PIN5,
+            GPIOPin::Pin6  => ffi::airspy_gpio_pin_t::GPIO_PIN6,
+            GPIOPin::Pin7  => ffi::airspy_gpio_pin_t::GPIO_PIN7,
+            GPIOPin::Pin8  => ffi::airspy_gpio_pin_t::GPIO_PIN8,
+            GPIOPin::Pin9  => ffi::airspy_gpio_pin_t::GPIO_PIN9,
             GPIOPin::Pin10 => ffi::airspy_gpio_pin_t::GPIO_PIN10,
             GPIOPin::Pin11 => ffi::airspy_gpio_pin_t::GPIO_PIN11,
             GPIOPin::Pin12 => ffi::airspy_gpio_pin_t::GPIO_PIN12,
@@ -381,18 +396,6 @@ impl Airspy {
             part_id: v.part_id,
             serial_no: (v.serial_no[2] as u64) << 32 | v.serial_no[3] as u64
         })
-    }
-
-    /// Set sample type for data from this Airspy.
-    pub fn set_sample_type(&mut self, stype: SampleType) -> Result<()> {
-        let stype = match stype {
-            SampleType::f32IQ => ffi::airspy_sample_type::AIRSPY_SAMPLE_FLOAT32_IQ,
-            SampleType::f32Real => ffi::airspy_sample_type::AIRSPY_SAMPLE_FLOAT32_REAL,
-            SampleType::i16IQ => ffi::airspy_sample_type::AIRSPY_SAMPLE_INT16_IQ,
-            SampleType::i16Real => ffi::airspy_sample_type::AIRSPY_SAMPLE_INT16_REAL,
-            SampleType::u16Real => ffi::airspy_sample_type::AIRSPY_SAMPLE_UINT16_REAL
-        };
-        ffifn!(ffi::airspy_set_sample_type(self.ptr, stype))
     }
 
     /// Set Airspy centre frequency, `freq` 24000000 to 1750000000 (in Hz)
@@ -501,9 +504,8 @@ mod tests {
     fn test_start_rx() {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
-        let _ = airspy.set_sample_type(SampleType::f32IQ);
         let (tx, _) = ::std::sync::mpsc::channel();
-        assert!(airspy.start_rx::<f32>(tx).is_ok());
+        assert!(airspy.start_rx::<IQ<f32>>(tx).is_ok());
     }
 
     #[test]
@@ -581,9 +583,7 @@ mod tests {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
         assert!(airspy.get_version().is_ok());
-        // Skip this test as it is hardware-dependent.
-        //let version = airspy.get_version().unwrap();
-        //assert!(version == "AirSpy NOS v1.0.0-rc6-0-g035ff81 2015-07-14");
+        // Don't check this value as it is hardware-dependent.
     }
 
     #[test]
@@ -591,18 +591,7 @@ mod tests {
         let _ = init();
         let mut airspy = Airspy::new().unwrap();
         assert!(airspy.get_partid_serial().is_ok());
-        // Skip these tests as they are hardware-dependent.
-        //let v = airspy.get_partid_serial().unwrap();
-        //assert!(v.serial_no == 0x440464c83833444f);
-        //assert!(v.part_id[0] == 0x6906002B);
-        //assert!(v.part_id[1] == 0x00000030);
-    }
-
-    #[test]
-    fn test_set_sample_type() {
-        let _ = init();
-        let mut airspy = Airspy::new().unwrap();
-        assert!(airspy.set_sample_type(SampleType::f32IQ).is_ok());
+        // Don't check these values as they are hardware-dependent.
     }
 
     #[test]

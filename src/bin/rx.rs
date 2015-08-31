@@ -7,10 +7,12 @@ extern crate airspy;
 use std::fs::File;
 use std::io::Write;
 use std::sync::mpsc;
+use airspy::{Airspy,IQ};
 
-fn open_airspy() -> airspy::Airspy {
+#[cfg_attr(test, allow(dead_code))]
+fn open_airspy() -> Airspy {
     println!("\nOpening Airspy:");
-    let mut dev = airspy::Airspy::new().unwrap();
+    let mut dev = Airspy::new().unwrap();
 
     println!("    Got board type:   {}", dev.get_board_id().unwrap());
     println!("    Firmware version: {}", dev.get_version().unwrap());
@@ -22,17 +24,15 @@ fn open_airspy() -> airspy::Airspy {
     dev
 }
 
-fn conf_airspy(dev: &mut airspy::Airspy) {
+#[cfg_attr(test, allow(dead_code))]
+fn conf_airspy(dev: &mut Airspy) {
     println!("\nConfiguring Airspy:");
 
     println!("    Setting sample rate to 10Msps");
     dev.set_sample_rate(10_000_000).unwrap();
 
-    println!("    Setting sample type to floating point IQ");
-    dev.set_sample_type(airspy::SampleType::f32IQ).unwrap();
-
-    println!("    Setting frequency to 434.650MHz");
-    dev.set_freq(434650000).unwrap();
+    println!("    Setting frequency to 434MHz");
+    dev.set_freq(434000000).unwrap();
 
     println!("    Disabling LNA/mixer AGC");
     dev.set_lna_agc(false).unwrap();
@@ -41,12 +41,13 @@ fn conf_airspy(dev: &mut airspy::Airspy) {
     println!("    Enabling output bias");
     dev.set_rf_bias(true).unwrap();
 
-    println!("    Setting LNA/mixer/BB gains to 15/7/0dB");
-    dev.set_lna_gain(15).unwrap();
-    dev.set_mixer_gain(15).unwrap();
+    println!("    Setting LNA/mixer/BB gains to 0/0/0dB");
+    dev.set_lna_gain(0).unwrap();
+    dev.set_mixer_gain(0).unwrap();
     dev.set_vga_gain(0).unwrap();
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn main() {
     airspy::init().unwrap();
     let version = airspy::lib_version();
@@ -65,20 +66,20 @@ fn main() {
 
     // Start streaming data
     println!("\nCollecting data...");
-    dev.start_rx::<f32>(tx_data).unwrap();
+    dev.start_rx::<IQ<f32>>(tx_data).unwrap();
 
     // Receive data
     let mut n_samples = 0usize;
     while dev.is_streaming() {
         // Fetch buffer from callback
         let samples = rx_data.recv().unwrap();
-        n_samples += samples.len() / 2;
+        n_samples += samples.len();
 
         // Turn buffer into a u8 of the appropriate length
         let buf: &[u8] = unsafe {
             std::slice::from_raw_parts(
-                std::mem::transmute(&samples[0] as *const f32),
-                samples.len() * std::mem::size_of::<f32>())
+                std::mem::transmute(&samples[0].i as *const f32),
+                samples.len() * std::mem::size_of::<IQ<f32>>())
         };
 
         // Write buffer to file
