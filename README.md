@@ -1,8 +1,40 @@
 # Rust bindings for libairspy
 
+## Prereqs
+
 Requires libairspy at least 1.0.6 already built and installed on your system. 
 Tests require an attached Airspy (otherwise there is not much to test!) and 
 must be run with `RUST_TEST_THREADS=1` or the threads may stomp on each other.
+
+## Outline
+
+The basic gist is:
+
+1. Make new Airspy object
+2. Configure it using set_sample_rate, set_freq, etc
+3. Create a MPSC channel for data transfer
+4. Use `start_rx<T>` to begin transfer to your channel, specifying desired 
+   sample type with `T` (see below).
+5. Call `rx.recv()` on your side to read in the data buffers
+6. When your half of the channel is destroyed, the Airspy is stopped
+
+## Sample Types
+
+Sample types are set by the `T` in `start_rx<T>`. It can be any of:
+
+* `IQ<f32>`
+* `IQ<i16>`
+* `Real<f32>`
+* `Real<i16>`
+* `Real<u16>`
+
+The type is passed to libairspy which does the conversion from the native 
+`Real<u16>`. Note that `Real` types give you twice as many samples per time 
+period than `IQ`. Also note that `Real<T>` is just an alias for `T` and `IQ<T>` 
+for `Complex<T>`, so all the usual maths operations are available for both 
+types.
+
+## Example
 
 Simple usage example:
 
@@ -38,4 +70,6 @@ while dev.is_streaming() {
 }
 ```
 
-See `src/bin/rx.rs` for a complete example of usage.
+See `src/bin/rx.rs` for a complete example of logging IQ data to file, or 
+[asfmrs](https://github.com/adamgreig/asfmrs) for an example application 
+(narrowband FM demodulation to audio output).
