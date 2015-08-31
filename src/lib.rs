@@ -37,16 +37,16 @@ pub struct PartID {
 
 /// Represent IQ data, either f32 or i16
 #[repr(packed)]
-#[derive(Clone)]
-pub struct IQ<T> where T: Clone {
+#[derive(Copy,Clone)]
+pub struct IQ<T> where T: Copy+Clone {
     pub i: T,
     pub q: T
 }
 
 /// Represent real-only data, either f32 or i16 or u16
 #[repr(packed)]
-#[derive(Clone)]
-pub struct Real<T> where T: Clone {
+#[derive(Copy,Clone)]
+pub struct Real<T> where T: Copy+Clone {
     pub i: T
 }
 
