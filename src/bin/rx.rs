@@ -78,7 +78,7 @@ fn main() {
         // Turn buffer into a u8 of the appropriate length
         let buf: &[u8] = unsafe {
             std::slice::from_raw_parts(
-                std::mem::transmute(&samples[0].i as *const f32),
+                std::mem::transmute(&samples[0].re as *const f32),
                 samples.len() * std::mem::size_of::<IQ<f32>>())
         };
 

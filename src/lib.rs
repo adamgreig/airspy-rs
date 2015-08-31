@@ -2,10 +2,13 @@
 // Copyright 2015 Adam Greig <adam@adamgreig.com>
 // Licensed under the MIT License.
 
+extern crate num;
+
 use std::ffi::CStr;
 use std::result;
 use std::str;
 use std::sync::mpsc::Sender;
+use num::Complex;
 
 mod ffi;
 
@@ -36,19 +39,10 @@ pub struct PartID {
 }
 
 /// Represent IQ data, either f32 or i16
-#[repr(packed)]
-#[derive(Copy,Clone)]
-pub struct IQ<T> where T: Copy+Clone {
-    pub i: T,
-    pub q: T
-}
+pub type IQ<T> = Complex<T>;
 
 /// Represent real-only data, either f32 or i16 or u16
-#[repr(packed)]
-#[derive(Copy,Clone)]
-pub struct Real<T> where T: Copy+Clone {
-    pub i: T
-}
+pub type Real<T> = T;
 
 /// Trait for all allowable sample types
 // TODO: update to use associated constants when that hits stable
